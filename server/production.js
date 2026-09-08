@@ -23,7 +23,7 @@ const server = createServer(async (req, res) => {
       res.writeHead(200, { 'Content-Type':'application/json', 'Cache-Control':'no-store' });
       res.end(req.method === 'HEAD' ? undefined : body); return;
     }
-    const file = resolve(dist, '.' + (pathname === '/' ? '/index.html' : ['/admin','/admin/'].includes(pathname) ? '/admin.html' : pathname));
+    const file = resolve(dist, '.' + (pathname === '/' ? '/index.html' : ['/admin','/admin/'].includes(pathname) ? '/admin.html' : ['/colony','/colony/'].includes(pathname) ? '/colony.html' : pathname));
     if (!file.startsWith(dist + sep) || pathname.split('/').some(part => part.startsWith('.'))) {
       res.writeHead(404); res.end(); return;
     }

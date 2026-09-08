@@ -11,6 +11,7 @@ export default defineConfig(({ mode }) => {
   const middleware = server => { server.httpServer?.once('close',()=>api.dispose()); server.middlewares.use(async (req, res, next) => {
     const path = (req.url || '').split('?')[0];
     if (await api(req,res)) return;
+    if (path === '/colony' || path === '/colony/') req.url='/colony.html';
     // These are compressed model assets, not HTTP-encoded responses.
     if (/^\/data\/[a-zA-Z0-9_.-]+\.gz$/.test(path)) {
       const file = resolve(root, 'public', path.slice(1));
@@ -20,6 +21,7 @@ export default defineConfig(({ mode }) => {
   }); };
   return {
   base: './',
+  build: { rollupOptions: { input: { main: resolve(root,'index.html'), colony: resolve(root,'colony.html') } } },
   envPrefix: ['VITE_', 'NEXT_PUBLIC_'],
   worker: { format: 'es' },
   plugins: [{ name: 'flydex-local-data', configureServer: middleware, configurePreviewServer: middleware }],

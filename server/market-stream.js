@@ -2,6 +2,7 @@ import { rpc } from './live-tape.js';
 import { MANAGER, TOPICS, discoverMarkets, marketFilters, decodeMarketSwap } from './markets.js';
 
 export function createMarketStream(token,options={}){
+  const discover=options.discoverMarkets||discoverMarkets;
   const http=options.http||'https://robinhood-rpc.publicnode.com',ws=options.ws||'wss://robinhood-rpc.publicnode.com';
   let markets=[],filters=[],socket,disposed=false,starting,updatedAt=0,head=0,cursor=0,lastScanAt=0,error='',metadataAt=0,revision=0,lastSwapAt=0,reconnecting,handshake,scanPending=false,draining=false,scanError='',retryAt=0,scanRetryAt=0;
   const events=new Map(),pending=new Map(),blocks=new Map(),acks=new Set();
@@ -14,7 +15,7 @@ export function createMarketStream(token,options={}){
       let ts=blocks.get(log.blockHash);
       if(!ts){const b=await rpc('eth_getBlockByHash',[log.blockHash,false],http);if(!b)continue;ts=Number(b.timestamp)*1000;blocks.set(log.blockHash,ts);}
       if(disposed||pending.get(id)!==log)continue;
-      try{const event=decodeMarketSwap(log,marketFor(log),ts);if(event){events.set(id,event);revision++;}}catch{error='A market emitted an unsupported swap format.';}
+      try{const market=marketFor(log),event=decodeMarketSwap(log,market,ts);if(event){if(options.includeToken)event.token=market.baseToken.address.toLowerCase();events.set(id,event);revision++;}}catch{error='A market emitted an unsupported swap format.';}
       pending.delete(id);
     }}catch{error='Waiting for block timestamps';}finally{draining=false;}
     while(events.size>500)events.delete(events.keys().next().value);
@@ -42,16 +43,16 @@ export function createMarketStream(token,options={}){
     socket.addEventListener('close',()=>{clearTimeout(handshake);if(!disposed){clearTimeout(reconnecting);reconnecting=setTimeout(connect,2500);reconnecting.unref?.();}});
   }
   async function scan(){
-    if(scanPending||!markets.length||disposed||Date.now()<scanRetryAt)return;scanPending=true;
+    if(scanPending||!markets.length||disposed||Date.now()<scanRetryAt||Date.now()-lastScanAt<(options.scanIntervalMs||0))return;scanPending=true;
     try{
       const latest=Number(await rpc('eth_blockNumber',[],http))-2;
       if(!updatedAt||Date.now()-updatedAt>20000)head=latest+2;
       // Bounded catch-up, with overlap for reorg reconciliation.
-      const from=cursor?Math.max(0,cursor-20):Math.max(0,latest-150);
-      const to=Math.min(latest,from+499);
+      const from=cursor?Math.max(0,cursor-(options.scanOverlap??20)):Math.max(0,latest-(options.initialScanBlocks??150));
+      const to=Math.min(latest,from+(options.scanBlockLimit??500)-1);
       if(to<from)return;
       const logs=[];
-      for(const filter of filters)logs.push(...await rpc('eth_getLogs',[{...filter,fromBlock:'0x'+from.toString(16),toBlock:'0x'+to.toString(16)}],options.logsHttp||'https://rpc.mainnet.chain.robinhood.com'));
+      for(const filter of filters){if(options.scanSpacingMs)await new Promise(resolve=>setTimeout(resolve,options.scanSpacingMs));if(disposed)return;logs.push(...await rpc('eth_getLogs',[{...filter,fromBlock:'0x'+from.toString(16),toBlock:'0x'+to.toString(16)}],options.logsHttp||'https://rpc.mainnet.chain.robinhood.com'));}
       const canonical=new Set(logs.filter(l=>!l.removed).map(l=>`4663:${l.transactionHash.toLowerCase()}:${Number(l.logIndex)}`));
       for(const [id,event] of events)if(event.block>=from&&event.block<=to&&!canonical.has(id)){events.delete(id);revision++;}
       for(const log of logs)receive(log);
@@ -62,7 +63,7 @@ export function createMarketStream(token,options={}){
     if(Date.now()<retryAt)return;
     try{
       if(Number(await rpc('eth_chainId',[],http))!==4663)throw Error('Wrong RPC chain');
-      markets=await discoverMarkets(token,http);if(disposed)return;
+      markets=await discover(token,http);if(disposed)return;
       filters=marketFilters(markets);metadataAt=Date.now();connect();void scan();
     }catch(e){error=e.message;retryAt=Date.now()+30000;starting=undefined;}
   }
@@ -71,7 +72,7 @@ export function createMarketStream(token,options={}){
     if(!markets.length){void read();return;}
     if(updatedAt&&Date.now()-updatedAt>20000&&socket?.readyState===1)socket.close();
     void scan();
-    if(Date.now()-metadataAt>120000){metadataAt=Date.now();void discoverMarkets(token,http).then(next=>{
+    if(Date.now()-metadataAt>120000){metadataAt=Date.now();void discover(token,http).then(next=>{
       if(disposed)return;
       const changed=markets.map(m=>m.pairAddress).sort().join()!==next.map(m=>m.pairAddress).sort().join();
       markets=next;filters=marketFilters(markets);if(changed){cursor=0;socket?.close();}

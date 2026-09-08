@@ -11,6 +11,7 @@ A live market visualizer with a 3D fruit fly and an interactive neural network. 
 - **Transactions:** confirmed swaps, estimated USD size, stimulus and movement response. The table displays the latest 100 records; session export includes the retained processed records.
 - **Token rooms:** search a Robinhood Chain contract address to open its own room. Other chains and pre-migration bonding curves are not supported.
 - **Feed:** the latest 50 Pons migrations, with the selected home coin pinned first.
+- **All flies:** `/colony` puts the home coin and 49 recent migrations in a shared 3D garden. Select a numbered fly or activity card to inspect its neural network, follow its movement, or open its individual room. A combined transaction feed sits below the dashboard.
 - **Admin:** `/admin` changes the home CA without redeploying. Open home rooms switch within 10 seconds, resetting their feed and simulation while retaining the 3D canvases.
 - **Interface:** light/dark themes, documentation, the project X link and a rounded logo favicon.
 
@@ -77,6 +78,7 @@ The `.gz` model files must be served as stored binary bytes, without `Content-En
 ## Project layout
 
 - `index.html`, `src/bootstrap.js`, `src/navigation.js`, `src/observatory.css`: page, settings startup, navigation and themes.
+- `colony.html`, `src/colony*.js`, `src/colony.css`, `server/colony.js`: separate colony page, instanced garden, per-token state, activity dashboard and shared multi-token watcher.
 - `src/observatory.js`, `src/live-client.js`, `src/tape.js`: live feed, reconciliation, stimulus mapping and transaction UI.
 - `src/scene.js`, `src/gait.js`, `src/body/`, `src/reactions.js`, `src/habitat.js`: fly meshes, articulation, movement, cameras and environment.
 - `src/brain-3d.js`, `src/event-colors.js`: neural visualization and per-event colors.
@@ -93,6 +95,10 @@ Earlier upstream UI/controller files and the single-pool adapters remain as refe
 ## Coverage and limits
 
 The server supports up to 40 discovered pools per room, 20 active shared room watchers and 250 SSE connections. Non-home rooms are released after two idle minutes. Each watcher retains up to 500 swaps in memory; transaction history is not a durable index.
+
+The colony uses one additional shared WebSocket watcher for its entire lineup, with discovery concurrency limited to three tokens. The browser requests snapshots every 1.5 seconds. Recovery scans use smaller ranges and spaced requests; the watcher stops after two idle minutes. The lineup refreshes with market discovery approximately every two minutes and includes the current home CA. It is ordered by migration recency, not market capitalization.
+
+Colony flies use simplified instanced geometry and independent movement controllers. All 50 cards show measured anatomy with each token's direct stimulation overlay. One full spiking simulation runs for the selected token and resets when selection changes; the cards do not claim to run 50 full neural simulations. Only newly observed swaps after opening the page trigger reactions. The dashboard counts swaps observed during that visit, not lifetime volume.
 
 The feed is near real time, not instant finality. Public RPC limits, network outages and discovery delays can affect delivery. USD sizes use estimated quote conversion. Creator/protocol fees, unsupported exchanges and pre-migration curve trades are not decoded. Initial retained history is displayed without replaying old reactions. Quiet coins can leave the fly resting or grooming.
 
