@@ -43,3 +43,5 @@
 @media(max-width:500px){.header .brand{font-size:17px}.pane-head .pane-head-actions{gap:7px}}
 
 .social-link{font-size:14px;font-weight:550;padding:5px;line-height:1}
+
+.header-actions .repo-link{font-size:11px;white-space:nowrap}@media(max-width:500px){.header-actions .repo-link{font-size:9px}}
