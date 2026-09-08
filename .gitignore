@@ -1,0 +1,13 @@
+node_modules/
+dist/
+.env
+.env.*
+!.env.example
+*.log
+.flydex/
+.railway/
+vendor/
+# Historical research and operational audit notes, not current documentation.
+docs/data-and-3d-research.md
+docs/live-feed-examples.md
+docs/watcher-audit.json
