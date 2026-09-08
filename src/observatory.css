@@ -45,3 +45,5 @@
 .social-link{font-size:14px;font-weight:550;padding:5px;line-height:1}
 
 .header-actions .repo-link{font-size:11px;white-space:nowrap}@media(max-width:500px){.header-actions .repo-link{font-size:9px}}
+
+.token-navigation{display:flex;align-items:center;gap:14px;flex:1;min-width:0;max-width:540px;margin-left:12px}.token-navigation #token-form{margin-left:0}.token-navigation #feed{white-space:nowrap;font-size:11px;padding:8px 0}@media(max-width:900px){.token-navigation{order:3;flex-basis:100%;max-width:none;margin-left:0}.token-navigation #token-form{order:0;flex-basis:auto}}@media(max-width:500px){.token-navigation{gap:10px}.token-navigation #feed{font-size:10px}.token-navigation #token-search{padding:10px 8px}.token-navigation #token-form button{padding:9px 8px}}
